@@ -108,6 +108,11 @@ static int categorize_channels(axidma_dev_t dev,
         return -ENOMEM;
     }
 
+    dev->dma_tx_chans.len = 0;
+    dev->dma_rx_chans.len = 0;
+    dev->vdma_tx_chans.len = 0;
+    dev->vdma_rx_chans.len = 0;
+
     // Place the DMA channel ID's into the appropiate array
     dev->num_channels = num_chan->num_channels;
     for (i = 0; i < num_chan->num_channels; i++)
@@ -125,6 +130,15 @@ static int categorize_channels(axidma_dev_t dev,
             array = &dev->vdma_rx_chans;
         }
         assert(array != NULL);
+
+        if (array == &dev->dma_tx_chans)
+            assert(array->len < num_chan->num_dma_tx_channels);
+        else if (array == &dev->dma_rx_chans)
+            assert(array->len < num_chan->num_dma_rx_channels);
+        else if (array == &dev->vdma_tx_chans)
+            assert(array->len < num_chan->num_vdma_tx_channels);
+        else if (array == &dev->vdma_rx_chans)
+            assert(array->len < num_chan->num_vdma_rx_channels);
 
         // Assign the ID for the channel into the appropiate array
         array->data[array->len] = chan->channel_id;
@@ -308,12 +322,21 @@ struct axidma_dev *axidma_init()
 void axidma_destroy(axidma_dev_t dev)
 {
     // Free the arrays used for channel id's and channel metadata
-    free(dev->vdma_rx_chans.data);
-    free(dev->vdma_tx_chans.data);
-    free(dev->dma_rx_chans.data);
-    free(dev->dma_tx_chans.data);
-    free(dev->channels);
-
+    if (dev->vdma_rx_chans.data != NULL) {
+        free(dev->vdma_rx_chans.data);
+    }
+    if (dev->vdma_tx_chans.data != NULL) {
+        free(dev->vdma_tx_chans.data);
+    }
+    if (dev->dma_rx_chans.data != NULL) {
+        free(dev->dma_rx_chans.data);
+    }
+    if (dev->dma_tx_chans.data != NULL) {
+        free(dev->dma_tx_chans.data);
+    }
+    if (dev->channels != NULL) {
+        free(dev->channels);
+    }
     // Close the AXI DMA device
     if (close(dev->fd) < 0) {
         perror("Failed to close the AXI DMA device");
